@@ -20,22 +20,28 @@ type Metrics struct {
 // Function that will handle requests to the api/metrics route
 // This function will answer web requests and creates a fakd 'metrics" response and sends it as a json
 func metricsHandler(w http.ResponseWriter, r *http.Request) {
+
 	rand.Seed(time.Now().UnixNano())
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	m := Metrics{
 		CPU:               10 + rand.Float64()*80,     // Pretend value for the CPU usage
 		Memory:            1024 + rand.Float64()*8192, // Pretend value for Memory (MB)
 		RequestsPerSecond: 100 + rand.Float64()*400,
 		Time:              time.Now().Format(time.RFC3339),
 	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(m)
 }
 
 func cpuHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
 	c := Metrics{
 		CPU:  32,
 		Time: time.Now().Format(time.RFC3339),
 	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(c)
 }
