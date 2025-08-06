@@ -15,12 +15,13 @@ type Metrics struct {
 	Memory            float64 `json:"memory"`
 	RequestsPerSecond float64 `json:"requestspersecond"`
 	Time              string  `json:"time"`
+	DiskUsage         float64 `json:"diskusage"`
 }
 
 // Function that will handle requests to the api/metrics route
 // This function will answer web requests and creates a fakd 'metrics" response and sends it as a json
 func metricsHandler(w http.ResponseWriter, r *http.Request) {
-
+	time.Sleep(2 * time.Second)
 	rand.Seed(time.Now().UnixNano())
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	m := Metrics{
