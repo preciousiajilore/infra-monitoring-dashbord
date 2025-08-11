@@ -10,12 +10,18 @@ import "./Metrics.css";
 //useEffect allows us to run code when our component loads
 
 //This function component has two state variables
-function Metrics(){
+function Metrics({ cpuThreshold = 80, memoryThreshold=10000}){
     const [metrics, setMetrics] = useState(null); //this will hold our API data when it arrives
     const [loading, setLoading] = useState(true); //this will tell us if we are still waiting for data
     const [lastUpdated, setLastUpdated] = useState(null); //this will say when the metrics were last updated
-    const [autoRefresh, setAutoRefresh] = useState(true); //this will control the toggle for 
+   // const [autoRefresh, setAutoRefresh] = useState(true); //this will control the toggle for 
    //once the first ocmponent is shown this runs once.
+   
+   const [autoRefresh, setAutoRefresh] = useState(() => {
+    const saved = localStorage.getItem('autoRefresh');
+    return saved ? JSON.parse(saved) : true; // default true
+   });
+
    const status = (() => {
     if (loading && !metrics) return 'loading';
     if (!loading && !metrics) return 'offline';
@@ -45,20 +51,31 @@ function Metrics(){
         );
     };
 
+   
+
+
   //Runs on the first render and sets up auto-refresh
+  // Effect A: fetch immediately + (optionally) start/stop the interval
+
   useEffect(() => {
+    
     fetchMetrics(); //Initial fetch
     
     let interval;
     if (autoRefresh){
-      interval = setInterval(fetchMetrics, 5000)
+      interval = setInterval(fetchMetrics, 10000)
     }
+
     //const interval = setInterval(fetchMetrics, 5000); //Fetch every 5 seconds
-    return () => clearInterval(interval);
+    return () => clearInterval(interval); // cleanup old timer when autoRefresh flips or component unmounts
   }, [autoRefresh]);
   //[] means that run this once when the component mounts
   //fetch immediately so the user sees the data ASAP
-
+  // Effect B: persist the toggle so it survives page reloads
+  useEffect(() =>
+  {
+    localStorage.setItem('autoRefresh', JSON.stringify(autoRefresh));
+  }, [autoRefresh]);
   //fetchMetrics(); // initial fetch
 
   //const interval = setInterval(fetchMetrics, 3000); // fetch every 3 seconds
@@ -66,7 +83,8 @@ function Metrics(){
   //return () => clearInterval(interval); // cleanup on unmount
  //[]);
 
-  
+  const highCpu = (metrics?.cpu ?? 0 ) > cpuThreshold;
+  const highMem = (metrics?.memory ?? 0) > memoryThreshold;
 
 
    //Loading state
@@ -87,6 +105,23 @@ function Metrics(){
     return(
         <div className='metrics-container'>
             <h2>Infra Metrics</h2>
+            {/* High CPU Warning */}
+            {highCpu && (
+              <div className='warning-container'>
+             
+                ⚠️ High CPU usage detected ({metrics.cpu.toFixed(2)}%)
+              </div>
+            )}
+            {/* High Memory Usage*/}
+            {highMem && (
+              <div className='warning-container'
+
+              
+              >
+                ⚠️ High Memory usage detected ({metrics.memory.toFixed(2)} MB)
+              </div>
+
+            )}
             <div className='toggle-container'>
               <span>Auto Refresh</span>
               <label className='switch'>
@@ -99,7 +134,8 @@ function Metrics(){
               </label>
             </div>
             <ul>
-                <li>CPU: {metrics.cpu.toFixed(2)}%</li>
+                <li>CPU: <span style = {{ color: ((metrics?.cpu ?? 0) > cpuThreshold ? "#ff552" : 'inherit')}}>{metrics.cpu.toFixed(2)}%</span>
+                </li>
                 <li>Memory: {metrics.memory.toFixed(2)} MB</li>
                 <li>Requests Per Second: {metrics.requestspersecond.toFixed(2)}</li>
                 <li>Time: {metrics.time}</li>
@@ -115,6 +151,7 @@ function Metrics(){
 
             >
              {loading ? "Refreshing..." : "Refresh Now"}
+             
             </button> 
 
            

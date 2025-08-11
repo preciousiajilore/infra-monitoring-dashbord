@@ -74,3 +74,13 @@ input:checked + .slider {
 input:checked + .slider:before {
   transform: translateX(22px);
 }
+
+.warning-container{
+    background : #ffebee;
+    color: #b71c1c;
+    border : 1px solid ffcdd2;
+    padding : 1em 0.75em;
+    border-radius: 6px;
+    margin-bottom: 0.75em;
+    font-weight: 600;
+}
