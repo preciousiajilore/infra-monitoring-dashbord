@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import loadingGif from "/Users/preciousajilore/Documents/GitHub/infra-monitoring-dashbord/frontend/src/assets/Art Glow GIF by Psyklon.gif";
+import StatusBadge from './components/StatusBadge';
+import Counter from './components/Counter';
+import "./Metrics.css";
+//import loadingGif from "/Users/preciousajilore/Documents/GitHub/infra-monitoring-dashbord/frontend/src/assets/Art Glow GIF by Psyklon.gif";
 
 //useState allows us to remember/store data in a component like when variables change it makes the
 //UI change as well
@@ -10,41 +13,111 @@ import loadingGif from "/Users/preciousajilore/Documents/GitHub/infra-monitoring
 function Metrics(){
     const [metrics, setMetrics] = useState(null); //this will hold our API data when it arrives
     const [loading, setLoading] = useState(true); //this will tell us if we are still waiting for data
-
+    const [lastUpdated, setLastUpdated] = useState(null); //this will say when the metrics were last updated
+    const [autoRefresh, setAutoRefresh] = useState(true); //this will control the toggle for 
    //once the first ocmponent is shown this runs once.
-    useEffect(() => {
-  const fetchMetrics = () => {
-    fetch('http://localhost:8080/api/metrics')
-      .then(res => res.json())
-      .then(data => {
-        setMetrics(data);
-        setLoading(false);
-      })
-      .catch(() => {
-        setMetrics(null);
-        setLoading(false);
-      });
-  };
-  fetchMetrics(); // initial fetch
+   const status = (() => {
+    if (loading && !metrics) return 'loading';
+    if (!loading && !metrics) return 'offline';
+    if(lastUpdated) {
+      const ageMs = Date.now() - lastUpdated.getTime();
+      return ageMs < 10_000 ? 'online' :'offline';
+    }
+    return 'loading';
+  }) ();
 
-  const interval = setInterval(fetchMetrics, 3000); // fetch every 3 seconds
+    const fetchMetrics = () => {
+      setLoading(true);
+      fetch('http://localhost:8080/api/metrics')
+        .then(res => res.json())
+        .then(data => {
+          setMetrics(data);
+          //setLoading(true);
+          setLastUpdated(new Date());
+        })
+        .catch(() => {
+          setMetrics(null);
+          //setLoading(false);
+        })
+        .finally(() => {
+          setLoading(false);
+        }
+        );
+    };
 
-  return () => clearInterval(interval); // cleanup on unmount
-}, []);
-
-    if (loading) return <img src={loadingGif} alt = "Loading..."/>;
-    if (!metrics) return <div>Oh no could not fetch metrics.</div>;
+  //Runs on the first render and sets up auto-refresh
+  useEffect(() => {
+    fetchMetrics(); //Initial fetch
     
+    let interval;
+    if (autoRefresh){
+      interval = setInterval(fetchMetrics, 5000)
+    }
+    //const interval = setInterval(fetchMetrics, 5000); //Fetch every 5 seconds
+    return () => clearInterval(interval);
+  }, [autoRefresh]);
+  //[] means that run this once when the component mounts
+  //fetch immediately so the user sees the data ASAP
+
+  //fetchMetrics(); // initial fetch
+
+  //const interval = setInterval(fetchMetrics, 3000); // fetch every 3 seconds
+
+  //return () => clearInterval(interval); // cleanup on unmount
+ //[]);
+
+  
+
+
+   //Loading state
+   //If we are loading (loading == True) and no data show the loader
+   if (loading && !metrics){
+    return <div>Loading...</div>
+   }
+   
+   //If we are not loading and no metrics show error message
+   if (!loading && !metrics){
+    return <div>Oops...no metrics here</div>
+   }
+    //if (loading) return <div>Loading...</div>;
+    //if (!metrics) return <div>Oh no could not fetch metrics.</div>;
+    
+    //--------------------------UI----------------------------------\\
     //Browser will display this if the metrics are available
     return(
-        <div style={{ background: "#222", color: "#fff", padding:"1em", borderRadius:"8px"}}>
+        <div className='metrics-container'>
             <h2>Infra Metrics</h2>
+            <div className='toggle-container'>
+              <span>Auto Refresh</span>
+              <label className='switch'>
+                <input
+                type= "checkbox"
+                checked = {autoRefresh}
+                onChange={() => setAutoRefresh(prev => !prev)}
+                />
+                <span className='slider round'></span>
+              </label>
+            </div>
             <ul>
                 <li>CPU: {metrics.cpu.toFixed(2)}%</li>
                 <li>Memory: {metrics.memory.toFixed(2)} MB</li>
                 <li>Requests Per Second: {metrics.requestspersecond.toFixed(2)}</li>
                 <li>Time: {metrics.time}</li>
             </ul>
+            <StatusBadge status = {status}/>
+            {/* Last updated line (outside the button) */}
+            <p style ={{ opacity: 0.8, marginTop: "0.5em"}}
+            >Last updated: {lastUpdated ? lastUpdated.toLocaleString() : '-'}</p>
+            {/*Refresh Button */}
+            <button className='metrics-button'
+              onClick = {fetchMetrics}
+              disabled = {loading} //prevents mutiple requests
+
+            >
+             {loading ? "Refreshing..." : "Refresh Now"}
+            </button> 
+
+           
         </div>
     );
  
